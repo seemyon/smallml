@@ -1,0 +1,22 @@
+{
+  "source": [
+    {
+      "url": "https://www.reddit.com/",
+      "id": "reddit"
+    },{
+      "url": "https://www.amazon.com/",
+      "id": "amazon"
+    }
+  ],
+  "projectId": "lighthouse-379323",
+  "pubsubTopicId": "run-lighthouse",
+  "datasetId": "lighthouse",
+  "minTimeBetweenTriggers": 300000,
+  "gcs": {
+    "bucketName": "sem-lighthouse-automation-reports"
+  },
+  "lighthouseFlags": {
+    "output": ["html", "csv"],
+    "emulatedFormFactor": "desktop"
+  }
+}

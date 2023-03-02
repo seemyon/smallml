@@ -1,0 +1,22 @@
+{
+  "source": [
+    {
+      "url": "https://www.google.com/",
+      "id": "googlesearch"
+    },{
+      "url": "https://www.ebay.com/",
+      "id": "ebay"
+    }
+  ],
+  "projectId": "multisite-lighthouse-gcp",
+  "pubsubTopicId": "launch-lighthouse",
+  "datasetId": "lighthouse",
+  "minTimeBetweenTriggers": 300000,
+  "lighthouseFlags": {
+    "output": ["html", "csv", "json"],
+    "emulatedFormFactor": "desktop"
+  },
+  "gcs": {
+    "bucketName": "lighthouse-reports"
+  }
+}

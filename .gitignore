@@ -1,0 +1,8 @@
+.idea
+node_modules
+.gcloudignore
+package-lock.json
+.DS_STORE
+secret
+.nyc_output
+coverage
