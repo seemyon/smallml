@@ -1,12 +1,24 @@
 {
-    "url": [
-	"https://www.reddit.com/",
-	"https://www.amazon.com/"
-    ],
-    "lighthouseFlags": {
-	"output": "csv",
-        "disableDeviceEmulation": true
-    },
+  "source": [
+    {
+      "url": "https://www.livingspaces.com/",
+      "id": "home"
+    },{
+      "url": "https://www.livingspaces.com/departments/furniture/living-room",
+      "id": "living_room_furniture"
+    }
+  ],
+  "projectId": "lighthouse-379323",
+  "pubsubTopicId": "run-lighthouse",
+  "datasetId": "livingspaces",
+  "minTimeBetweenTriggers": 300000,
+  "gcs": {
+    "bucketName": "livingspaces-lighthouse-reports"
+  },
+   "lighthouseFlags": {
+    "output": ["html", "csv"],
+    "emulatedFormFactor": "desktop"
+  },
     "chromeFlags": ["--headless"],
     "writeTo": "./",
     "sortByDate": true
