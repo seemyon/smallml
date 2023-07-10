@@ -9,7 +9,7 @@
     }
   ],
   "projectId": "lighthouse-379323",
-  "pubsubTopicId": "run-lighthouse",
+  "pubsubTopicId": "launch-lighthouse",
   "datasetId": "livingspaces",
   "minTimeBetweenTriggers": 300000,
   "gcs": {
