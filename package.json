@@ -1,11 +1,11 @@
 {
-  "name": "multisite-lighthouse-gcp",
+  "name": "seo-automate-lighthouse",
   "version": "0.0.1",
   "description": "Run Lighthouse audits on URLs, and write the results daily into a BigQuery table.",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/seemyon/automate-lighthouse.git"
+    "url": "https://github.com/seemyon/seo-automate-lighthouse.git"
   },
   "engines": {
     "node": ">=8"
