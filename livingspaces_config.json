@@ -1,0 +1,22 @@
+{
+  "source": [
+    {
+      "url": "https://www.livingspaces.com/",
+      "id": "home"
+    },{
+      "url": "https://www.livingspaces.com/departments/furniture/living-room",
+      "id": "living_room_furniture"
+    }
+  ],
+  "projectId": "lighthouse-379323",
+  "pubsubTopicId": "run-livingspaces",
+  "datasetId": "livingspaces",
+  "minTimeBetweenTriggers": 300000,
+  "gcs": {
+    "bucketName": "livingspaces-lighthouse-reports"
+  },
+  "lighthouseFlags": {
+    "output": ["html", "csv"],
+    "emulatedFormFactor": "desktop"
+  }
+}

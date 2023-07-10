@@ -35,7 +35,7 @@ const {PubSub} = require(`@google-cloud/pubsub`);
 const {Storage} = require(`@google-cloud/storage`);
 
 const bqSchema = require(`./bigquery-schema.json`);
-const config = require(`./config.json`);
+const config = require(`./livingspaces_config.json`);
 const configSchema = require(`./config.schema.json`);
 
 // Make filesystem write work with async/await

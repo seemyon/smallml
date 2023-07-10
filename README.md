@@ -1,7 +1,7 @@
 # automate-lighthouse
 Run Lighthouse audits on URLs, and write the results daily into a BigQuery table.
 
-# Steps (needs rewrite)
+# Steps
 
 1. Clone repo.
 2. Install [Google Cloud SDK](https://cloud.google.com/sdk/).
@@ -39,4 +39,4 @@ This is extremely low-cost. You should basically be able to work with the free t
 # Copyright 
 
 Originally the repository was created by Simo Ahava at https://github.com/sahava/multisite-lighthouse-gcp.
-This is, in fact, a copy of the original repository with minor changes in the json and js files.
+This is, in fact, a copy of the original repository with some changes in the json and js files.
