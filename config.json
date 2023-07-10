@@ -18,8 +18,5 @@
    "lighthouseFlags": {
     "output": ["html", "csv"],
     "emulatedFormFactor": "desktop"
-  },
-    "chromeFlags": ["--headless"],
-    "writeTo": "./",
-    "sortByDate": true
+  }
 }
