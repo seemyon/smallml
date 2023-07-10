@@ -2,7 +2,7 @@
   "source": [
     {
       "url": "https://www.livingspaces.com/",
-      "id": "home"
+      "id": "livingspaces"
     },{
       "url": "https://www.livingspaces.com/departments/furniture/living-room",
       "id": "living_room_furniture"
@@ -10,7 +10,7 @@
   ],
   "projectId": "lighthouse-379323",
   "pubsubTopicId": "run-lighthouse",
-  "datasetId": "livingspaces",
+  "datasetId": "lighthouse-379323.livingspaces",
   "minTimeBetweenTriggers": 300000,
   "gcs": {
     "bucketName": "livingspaces-lighthouse-reports"
