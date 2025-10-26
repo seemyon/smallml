@@ -4,14 +4,6 @@ Create Synthetic SME Datasets for Hierarchical Bayesian Model
 This script generates synthetic SME datasets by sampling from harmonized
 public data and adding business-specific noise.
 
-Usage:
-    python scripts/create_sme_datasets.py [--test-mode]
-
-Options:
-    --test-mode    Quick test with J=3, n=30 (for pipeline testing)
-
-Author: SmallML Framework
-Date: 2025-10-16
 """
 
 import sys
@@ -52,8 +44,8 @@ def main():
         n_per_sme = 30      # 30 customers each
         noise_scale = 0.1
     else:
-        J = 10              # 10 SMEs
-        n_per_sme = 50      # 50 customers each (small-data regime)
+        J = 15              # 15 SMEs (updated for publication)
+        n_per_sme = 100     # 100 customers each (more robust estimates)
         noise_scale = 0.1   # 10% of feature std
 
     random_seed = 42

@@ -9,8 +9,6 @@ complement each other.
 Figure Generated:
 - Figure 4.5: Customer Uncertainty Heatmap
 
-Usage:
-    python scripts/create_uncertainty_heatmap.py
 """
 
 import numpy as np
@@ -169,13 +167,27 @@ def create_uncertainty_heatmap(df, q_hat):
     colors_ordered = [set_colors[s] for s in set_order]
 
     violin_data = [df[df['pred_set'] == s]['p_std'].values for s in set_order]
-    parts = ax3.violinplot(violin_data, positions=[0, 1, 2],
-                           showmeans=True, showmedians=True)
 
-    # Color the violins
-    for i, pc in enumerate(parts['bodies']):
-        pc.set_facecolor(colors_ordered[i])
-        pc.set_alpha(0.6)
+    # Filter out empty arrays
+    valid_data = []
+    valid_positions = []
+    valid_labels = []
+    valid_colors = []
+    for i, data in enumerate(violin_data):
+        if len(data) > 0:
+            valid_data.append(data)
+            valid_positions.append(i)
+            valid_labels.append(set_order[i])
+            valid_colors.append(colors_ordered[i])
+
+    if len(valid_data) > 0:
+        parts = ax3.violinplot(valid_data, positions=valid_positions,
+                               showmeans=True, showmedians=True)
+
+        # Color the violins
+        for i, pc in enumerate(parts['bodies']):
+            pc.set_facecolor(valid_colors[i])
+            pc.set_alpha(0.6)
 
     ax3.set_xticks([0, 1, 2])
     ax3.set_xticklabels(set_order)
