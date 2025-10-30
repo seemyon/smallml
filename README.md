@@ -341,8 +341,8 @@ Special thanks to the open-source communities behind PyMC, CatBoost, SHAP, and M
 ## 📞 Contact
 
 - **Author:** Semen Leontev
-- **GitHub:** [@semleontev](https://github.com/semleontev)
-- **Issues:** [GitHub Issues](https://github.com/semleontev/smallml/issues)
+- **GitHub:** [@semleontev](https://github.com/seemyon)
+- **Issues:** [GitHub Issues](https://github.com/seemyon/smallml/issues)
 
 ---
 
