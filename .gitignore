@@ -91,6 +91,10 @@ data/public/*
 *.hdf5
 *.feather
 
+# EXCEPTION: Allow package data files (pre-trained priors)
+!smallml/data/*.pkl
+!smallml/data/*.pickle
+
 # Model artifacts
 models/*
 !models/.gitkeep
@@ -111,6 +115,8 @@ catboost_info/
 # Documentation builds
 docs/
 site/
+
+# Results (generated outputs - OK to ignore)
 results/
 
 # OS
@@ -128,3 +134,4 @@ temp/
 
 # Drafts and working files
 /work
+nul
