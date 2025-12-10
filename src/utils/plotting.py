@@ -218,7 +218,7 @@ class SmallMLPlotStyle:
             dpi = cls.DPI
 
         fig.savefig(filepath, dpi=dpi, bbox_inches=bbox_inches, **kwargs)
-        print(f"✓ Figure saved: {filepath}")
+        print(f"[OK] Figure saved: {filepath}")
 
     @classmethod
     def format_axis(

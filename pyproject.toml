@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smallml"
+version = "0.1.0"
+description = "Bayesian Transfer Learning for Small-Data Predictive Analytics"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+keywords = ["machine-learning", "bayesian", "transfer-learning", "small-data"]
+authors = [
+    {name = "Semen Leontev", email = "leontyev.s@gmail.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/seemyon/smallml"
+"Bug Tracker" = "https://github.com/seemyon/smallml/issues"
