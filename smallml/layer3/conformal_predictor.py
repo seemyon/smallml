@@ -124,8 +124,18 @@ class ConformalPredictor:
             )
         if not np.all((y_true == 0) | (y_true == 1)):
             raise ValueError("y_true must contain only 0 or 1")
+
+        # Clip predictions to [0,1] if slightly outside due to numerical precision
         if not np.all((predictions >= 0) & (predictions <= 1)):
-            raise ValueError("predictions must be in [0,1]")
+            min_pred = predictions.min()
+            max_pred = predictions.max()
+            # Allow small numerical errors (< 1e-6)
+            if min_pred < -1e-6 or max_pred > 1 + 1e-6:
+                raise ValueError(
+                    f"predictions must be in [0,1], got range [{min_pred:.10f}, {max_pred:.10f}]"
+                )
+            # Clip small numerical errors
+            predictions = np.clip(predictions, 0.0, 1.0)
 
         # Compute absolute residual scores
         scores = np.abs(y_true - predictions)
@@ -296,9 +306,17 @@ class ConformalPredictor:
         if single_input:
             predictions = np.array([predictions])
 
-        # Validate inputs
+        # Validate and clip predictions
         if not np.all((predictions >= 0) & (predictions <= 1)):
-            raise ValueError("predictions must be in [0,1]")
+            min_pred = predictions.min()
+            max_pred = predictions.max()
+            # Allow small numerical errors (< 1e-6)
+            if min_pred < -1e-6 or max_pred > 1 + 1e-6:
+                raise ValueError(
+                    f"predictions must be in [0,1], got range [{min_pred:.10f}, {max_pred:.10f}]"
+                )
+            # Clip small numerical errors
+            predictions = np.clip(predictions, 0.0, 1.0)
 
         prediction_sets = []
 

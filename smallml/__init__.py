@@ -7,10 +7,10 @@ conformal prediction.
 """
 
 from .version import __version__, __author__, __description__
-from .pipeline import SmallMLPipeline
+from .pipeline import Pipeline
 
 __all__ = [
-    'SmallMLPipeline',
+    'Pipeline',
     '__version__',
     '__author__',
     '__description__',

@@ -31,7 +31,7 @@ pip install git+https://github.com/seemyon/smallml
 ### Basic Usage (5 lines of code!)
 
 ```python
-from smallml import SmallMLPipeline
+from smallml import Pipeline
 import pandas as pd
 
 # Your data: dict of {entity_name: dataframe}
@@ -43,7 +43,7 @@ sme_data = {
 }
 
 # Create and fit pipeline (automatically validates convergence)
-pipeline = SmallMLPipeline()
+pipeline = Pipeline()
 pipeline.fit(sme_data, target_col='churned')
 
 # Make predictions with uncertainty
@@ -109,7 +109,7 @@ sme_data = {
 
 - **Installation Guide**: See above for basic installation
 - **Quickstart Tutorial**: `examples/quickstart.py`
-- **API Reference**: Check docstrings in `smallml.pipeline.SmallMLPipeline`
+- **API Reference**: Check docstrings in `smallml.pipeline.Pipeline`
 - **Research Paper**: See `docs/` for technical details
 
 ## 🔬 Research & Reproducibility
@@ -188,8 +188,8 @@ print(diagnostics)
 pipeline.save('models/my_pipeline.pkl')
 
 # Load later
-from smallml import SmallMLPipeline
-pipeline = SmallMLPipeline.load('models/my_pipeline.pkl')
+from smallml import Pipeline
+pipeline = Pipeline.load('models/my_pipeline.pkl')
 predictions = pipeline.predict(new_data)
 ```
 
@@ -197,11 +197,11 @@ predictions = pipeline.predict(new_data)
 
 ```python
 # Faster MCMC (fewer iterations) for testing
-pipeline = SmallMLPipeline(quick_mode=True)
+pipeline = Pipeline(quick_mode=True)
 pipeline.fit(sme_data, target_col='churned')  # Takes ~5-10 min instead of 15-30
 
 # For production, use default settings:
-pipeline = SmallMLPipeline(quick_mode=False)  # More reliable convergence
+pipeline = Pipeline(quick_mode=False)  # More reliable convergence
 ```
 
 ## ❓ FAQ

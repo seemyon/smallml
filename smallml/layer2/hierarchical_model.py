@@ -626,6 +626,11 @@ class HierarchicalBayesianModel:
                 f"Invalid sme_id: {sme_id}. Must be in [0, {self.J_-1}]"
             )
 
+        # Handle NaN values in input (same as during training)
+        X_new = X_new.astype(np.float64)
+        if np.any(np.isnan(X_new)):
+            X_new = np.nan_to_num(X_new, nan=0.0)
+
         # Get posterior samples for beta_j
         beta_samples = self.trace_.posterior['beta_j'].values  # (chains, draws, J, p)
 

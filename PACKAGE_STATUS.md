@@ -21,7 +21,7 @@
    ✅ data/                     # For pre-trained priors (EMPTY - awaiting your priors)
    ✅ __init__.py              # Main package import
    ✅ version.py               # Version 0.1.0
-   ✅ pipeline.py              # SmallMLPipeline class (~500 lines)
+   ✅ pipeline.py              # Pipeline class (~500 lines)
 
 ✅ examples/                    # NEW examples directory
    ✅ quickstart.py             # Complete working example
@@ -36,7 +36,7 @@
 ```
 
 ### Phase 2-3: Core Implementation & Documentation (DONE ✅)
-- ✅ **SmallMLPipeline class** - Complete implementation with:
+- ✅ **Pipeline class** - Complete implementation with:
   - `fit()` - Train hierarchical Bayesian + calibrate conformal
   - `predict()` - Get predictions with uncertainty
   - `evaluate()` - Compute metrics (AUC, accuracy, F1, coverage)
@@ -52,7 +52,7 @@
 
 ### Phase 4: Testing (DONE ✅)
 - ✅ **Package installs successfully** via `pip install -e .`
-- ✅ **Imports work** - `from smallml import SmallMLPipeline` ✓
+- ✅ **Imports work** - `from smallml import Pipeline` ✓
 - ✅ **Version displays** - SmallML v0.1.0 ✓
 
 ---
@@ -97,7 +97,7 @@ print("✓ Priors added successfully!")
 
 **What happens without priors:**
 - Package will install and import successfully
-- But you'll get a warning when using `SmallMLPipeline(use_pretrained_priors=True)`
+- But you'll get a warning when using `Pipeline(use_pretrained_priors=True)`
 - You can still use the package by providing priors manually during fit()
 
 ---
@@ -180,13 +180,13 @@ your-project/
 
 ### Test 1: Basic Import (PASSED ✅)
 ```bash
-.venv/Scripts/python.exe -c "from smallml import SmallMLPipeline, __version__; print('SmallML v' + __version__)"
+.venv/Scripts/python.exe -c "from smallml import Pipeline, __version__; print('SmallML v' + __version__)"
 # Output: SmallML v0.1.0 ✓
 ```
 
 ### Test 2: Check Package Structure
 ```bash
-.venv/Scripts/python.exe -c "from smallml import SmallMLPipeline; pipeline = SmallMLPipeline(use_pretrained_priors=True); print('Pipeline created')"
+.venv/Scripts/python.exe -c "from smallml import Pipeline; pipeline = Pipeline(use_pretrained_priors=True); print('Pipeline created')"
 # Will work but warn if priors missing
 ```
 
@@ -204,7 +204,7 @@ your-project/
 1. ✅ **Add your pre-trained priors** to `smallml/data/priors_churn.pkl`
    - Copy from your existing models/ directory
    - Verify format: `{'beta_0': array, 'Sigma_0': array}`
-   - Test: Try creating `SmallMLPipeline()` - should load without warning
+   - Test: Try creating `Pipeline()` - should load without warning
 
 2. 📄 **Decide on README situation**
    - Rename README_PACKAGE.md → README.md? (Recommended)

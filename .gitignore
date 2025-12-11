@@ -135,3 +135,4 @@ temp/
 # Drafts and working files
 /work
 nul
+tests/ignore

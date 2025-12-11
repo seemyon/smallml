@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 
 # NOTE: If priors are not yet added, you'll get a warning but the pipeline will still work
-from smallml import SmallMLPipeline
+from smallml import Pipeline
 
 # Set random seed for reproducibility
 np.random.seed(42)
@@ -76,7 +76,7 @@ print("="*70)
 print("\nThis will take 15-30 minutes depending on your hardware.")
 print("Progress will be shown below...\n")
 
-pipeline = SmallMLPipeline(
+pipeline = Pipeline(
     use_pretrained_priors=True,  # Will use bundled priors if available
     quick_mode=False,            # Use full MCMC for reliable results
     random_seed=42
@@ -161,8 +161,8 @@ print("="*70 + "\n")
 pipeline.save('smallml_pipeline.pkl')
 print("\n✓ Pipeline saved successfully!")
 print("\nTo load later:")
-print("  from smallml import SmallMLPipeline")
-print("  pipeline = SmallMLPipeline.load('smallml_pipeline.pkl')")
+print("  from smallml import Pipeline")
+print("  pipeline = Pipeline.load('smallml_pipeline.pkl')")
 
 
 # ===== Summary =====

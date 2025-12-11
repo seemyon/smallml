@@ -12,7 +12,7 @@ from .layer2.hierarchical_model import HierarchicalBayesianModel
 from .layer3.conformal_predictor import ConformalPredictor
 
 
-class SmallMLPipeline:
+class Pipeline:
     """
     End-to-end SmallML pipeline for small-data predictive analytics.
 
@@ -34,7 +34,7 @@ class SmallMLPipeline:
 
     Examples
     --------
-    >>> from smallml import SmallMLPipeline
+    >>> from smallml import Pipeline
     >>>
     >>> # Prepare multi-entity data
     >>> sme_data = {
@@ -44,7 +44,7 @@ class SmallMLPipeline:
     ... }
     >>>
     >>> # Fit pipeline (automatic convergence validation)
-    >>> pipeline = SmallMLPipeline()
+    >>> pipeline = Pipeline()
     >>> pipeline.fit(sme_data, target_col='churned')
     >>>
     >>> # Make predictions with uncertainty
@@ -98,7 +98,7 @@ class SmallMLPipeline:
         target_col: str = 'churned',
         calibration_fraction: float = 0.25,
         validate_convergence: bool = True
-    ) -> 'SmallMLPipeline':
+    ) -> 'Pipeline':
         """
         Fit the SmallML pipeline on multi-entity data.
 
@@ -120,7 +120,7 @@ class SmallMLPipeline:
 
         Returns
         -------
-        self : SmallMLPipeline
+        self : Pipeline
             Fitted pipeline.
         """
         # Validate inputs
@@ -211,17 +211,19 @@ class SmallMLPipeline:
             n_samples=n_posterior_samples
         )
 
+        # Clip predictions to [0, 1] to handle numerical issues
         predictions = pd.DataFrame({
-            'prediction': posterior['mean']
+            'prediction': np.clip(posterior['mean'], 0.0, 1.0)
         })
 
         if return_uncertainty:
             predictions['bayesian_std'] = posterior['std']
-            predictions['bayesian_lower_90'] = posterior['lower_90']
-            predictions['bayesian_upper_90'] = posterior['upper_90']
+            predictions['bayesian_lower_90'] = np.clip(posterior['lower_90'], 0.0, 1.0)
+            predictions['bayesian_upper_90'] = np.clip(posterior['upper_90'], 0.0, 1.0)
 
-            # Conformal prediction sets
-            sets = self.conformal_predictor.predict_set(posterior['mean'])
+            # Conformal prediction sets (use clipped predictions)
+            clipped_preds = np.clip(posterior['mean'], 0.0, 1.0)
+            sets = self.conformal_predictor.predict_set(clipped_preds)
             predictions['conformal_set'] = [str(s) for s in sets]
             predictions['conformal_set_size'] = [len(s) for s in sets]
 
@@ -239,7 +241,17 @@ class SmallMLPipeline:
         if self.hierarchical_model is None:
             raise RuntimeError("Model not fitted yet.")
 
-        return self.hierarchical_model.check_convergence()
+        # Get detailed diagnostics from ArviZ
+        import arviz as az
+        summary = az.summary(self.hierarchical_model.trace_)
+
+        # Reset index to make parameter names a column
+        summary = summary.reset_index()
+        summary = summary.rename(columns={'index': 'parameter'})
+
+        # Select relevant columns
+        cols = ['parameter', 'r_hat', 'ess_bulk', 'ess_tail']
+        return summary[cols]
 
     def evaluate(
         self,
@@ -288,19 +300,35 @@ class SmallMLPipeline:
             y_test.values,
             preds['prediction'].values
         )
-        metrics['conformal_coverage'] = coverage['empirical_coverage']
+        metrics['conformal_coverage'] = coverage['coverage']
         metrics['mean_set_size'] = preds['conformal_set_size'].mean()
 
         return metrics
 
     def save(self, filepath: str):
-        """Save fitted pipeline to disk (pickle)."""
-        with open(filepath, 'wb') as f:
-            pickle.dump(self, f)
-        print(f"✓ Pipeline saved to {filepath}")
+        """
+        Save fitted pipeline to disk.
+
+        Note: The PyMC model object cannot be pickled directly.
+        Use hierarchical_model.save_trace() to save the MCMC trace separately.
+        """
+        # Temporarily remove unpicklable PyMC model
+        model_backup = None
+        if self.hierarchical_model is not None:
+            model_backup = self.hierarchical_model.model_
+            self.hierarchical_model.model_ = None
+
+        try:
+            with open(filepath, 'wb') as f:
+                pickle.dump(self, f)
+            print(f"✓ Pipeline saved to {filepath}")
+        finally:
+            # Restore the model
+            if model_backup is not None:
+                self.hierarchical_model.model_ = model_backup
 
     @classmethod
-    def load(cls, filepath: str) -> 'SmallMLPipeline':
+    def load(cls, filepath: str) -> 'Pipeline':
         """Load fitted pipeline from disk."""
         with open(filepath, 'rb') as f:
             pipeline = pickle.load(f)
@@ -391,27 +419,23 @@ class SmallMLPipeline:
         """Check MCMC convergence and raise error if failed."""
         diagnostics = self.hierarchical_model.check_convergence()
 
-        # Check R̂ < 1.01 for all parameters
-        max_rhat = diagnostics['r_hat'].max()
-        if max_rhat >= 1.01:
-            failed_params = diagnostics[diagnostics['r_hat'] >= 1.01]
+        # diagnostics is a dictionary with keys: 'rhat_ok', 'rhat_max', 'ess_ok', 'ess_min', 'all_ok'
+        if not diagnostics['rhat_ok']:
             raise RuntimeError(
-                f"MCMC convergence failed! R̂ ≥ 1.01 for {len(failed_params)} parameters.\n"
-                f"Max R̂ = {max_rhat:.4f}\n"
-                f"Failed parameters:\n{failed_params}\n\n"
-                "Try increasing MCMC draws: pipeline = SmallMLPipeline(quick_mode=False)"
+                f"MCMC convergence failed! R̂ ≥ 1.01 detected.\n"
+                f"Max R̂ = {diagnostics['rhat_max']:.4f}\n\n"
+                "Try increasing MCMC draws: pipeline = Pipeline(quick_mode=False)"
             )
 
         # Check ESS > 400 for all parameters
-        min_ess = diagnostics['ess_bulk'].min()
-        if min_ess < 400:
+        if not diagnostics['ess_ok']:
             warnings.warn(
-                f"Low effective sample size detected (ESS = {min_ess:.0f}). "
+                f"Low effective sample size detected (ESS = {diagnostics['ess_min']:.0f}). "
                 "Consider increasing MCMC draws for more reliable inference."
             )
 
-        print(f"  ✓ Convergence validated (max R̂ = {max_rhat:.4f}, "
-              f"min ESS = {min_ess:.0f})")
+        print(f"  ✓ Convergence validated (max R̂ = {diagnostics['rhat_max']:.4f}, "
+              f"min ESS = {diagnostics['ess_min']:.0f})")
 
     def _fit_conformal(self, cal_data):
         """Calibrate conformal predictor (Layer 3)."""
@@ -429,6 +453,13 @@ class SmallMLPipeline:
             cal_predictions.extend(posterior['mean'])
             cal_labels.extend(df[self.target_col].values)
 
+        # Convert to numpy arrays
+        cal_predictions = np.array(cal_predictions)
+        cal_labels = np.array(cal_labels)
+
+        # Clip predictions to [0, 1] range (handle numerical issues)
+        cal_predictions = np.clip(cal_predictions, 0.0, 1.0)
+
         # Calibrate
         self.conformal_predictor = ConformalPredictor(
             alpha=0.10,  # 90% coverage
@@ -436,8 +467,8 @@ class SmallMLPipeline:
         )
 
         q_hat = self.conformal_predictor.calibrate(
-            np.array(cal_labels),
-            np.array(cal_predictions)
+            cal_labels,
+            cal_predictions
         )
 
         print(f"  ✓ Conformal predictor calibrated (q̂ = {q_hat:.4f})")
