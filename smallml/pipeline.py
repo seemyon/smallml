@@ -10,6 +10,7 @@ from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
 
 from .layer2.hierarchical_model import HierarchicalBayesianModel
 from .layer3.conformal_predictor import ConformalPredictor
+from .feature_matcher import FeatureMatcher
 
 
 class Pipeline:
@@ -21,9 +22,10 @@ class Pipeline:
 
     Parameters
     ----------
-    use_pretrained_priors : bool, default=True
+    use_pretrained_priors : bool, default=False
         If True, loads pre-trained priors from package data.
-        If False, priors must be provided during fit().
+        If False, uses weakly informative priors (recommended for v0.1.x).
+        Note: Pre-trained priors are currently being tuned for optimal performance.
 
     quick_mode : bool, default=False
         If True, uses faster MCMC settings for prototyping.
@@ -53,7 +55,7 @@ class Pipeline:
 
     def __init__(
         self,
-        use_pretrained_priors: bool = True,
+        use_pretrained_priors: bool = False,
         quick_mode: bool = False,
         random_seed: int = 42
     ):
@@ -73,6 +75,9 @@ class Pipeline:
         self.feature_names = None
         self.target_col = None
         self.sme_names = None
+        self.feature_matcher = None
+        self.feature_matches = None
+        self.tau_adjusted = None
 
     def _load_pretrained_priors(self) -> Dict:
         """Load pre-trained priors from package data."""
@@ -90,6 +95,7 @@ class Pipeline:
             priors = pickle.load(f)
 
         print(f"✓ Loaded pre-trained priors for {len(priors['beta_0'])} features")
+        print("  Note: Pre-trained priors are experimental in v0.1.x")
         return priors
 
     def fit(
@@ -382,8 +388,97 @@ class Pipeline:
 
         return train_data, cal_data
 
+    def _create_hybrid_priors(self, user_features):
+        """
+        Create hybrid priors by matching user features to pre-trained features.
+
+        Parameters
+        ----------
+        user_features : List[str]
+            User's feature names
+
+        Returns
+        -------
+        beta_0_hybrid : np.ndarray, shape (N,)
+            Hybrid prior means for N user features
+        Sigma_0_hybrid : np.ndarray, shape (N, N)
+            Hybrid prior covariance for N user features
+        tau_adjusted : float
+            Adjusted between-SME variance based on match rate
+        """
+        if self.priors is None or 'feature_names' not in self.priors:
+            # No priors available, use weakly informative priors
+            N = len(user_features)
+            beta_0_hybrid = np.zeros(N)
+            Sigma_0_hybrid = np.eye(N) * 25.0  # Var = 25 -> SD = 5
+            tau_adjusted = 2.0
+            return beta_0_hybrid, Sigma_0_hybrid, tau_adjusted
+
+        # Initialize feature matcher
+        pretrained_features = self.priors['feature_names']
+        self.feature_matcher = FeatureMatcher(pretrained_features)
+
+        # Match user features to pre-trained features
+        matches, match_info = self.feature_matcher.match_all(user_features)
+        self.feature_matches = matches
+
+        # Print matching report
+        self.feature_matcher.print_match_report(user_features, verbose=True)
+
+        # Get match statistics
+        stats = self.feature_matcher.get_match_statistics(user_features)
+        match_rate = stats['match_rate']
+
+        # Build hybrid priors
+        N = len(user_features)
+        beta_0_hybrid = np.zeros(N)
+        Sigma_0_hybrid = np.eye(N) * 25.0  # Default: weakly informative
+
+        # Create mapping from pre-trained feature name (lowercase) to index
+        pretrained_feature_to_idx = {
+            feat.lower(): idx for idx, feat in enumerate(pretrained_features)
+        }
+
+        # Fill in priors for matched features
+        for i, user_feat in enumerate(user_features):
+            matched_feat = matches[user_feat]
+
+            if matched_feat is not None:
+                # Feature matched - use pre-trained prior
+                # matched_feat is already lowercase from FeatureMatcher
+                pretrained_idx = pretrained_feature_to_idx[matched_feat]
+                beta_0_hybrid[i] = self.priors['beta_0'][pretrained_idx]
+
+                # For covariance, only use diagonal (variance) for simplicity
+                # Full covariance reconstruction would be complex with partial matching
+                Sigma_0_hybrid[i, i] = self.priors['Sigma_0'][pretrained_idx, pretrained_idx]
+            else:
+                # Feature not matched - use weakly informative prior
+                beta_0_hybrid[i] = 0.0
+                Sigma_0_hybrid[i, i] = 25.0  # SD = 5
+
+        # Use standard tau regardless of match rate
+        # (adaptive tau was causing convergence issues)
+        tau_adjusted = 2.0
+
+        return beta_0_hybrid, Sigma_0_hybrid, tau_adjusted
+
     def _fit_hierarchical(self, train_data):
         """Fit hierarchical Bayesian model (Layer 2)."""
+
+        # Create hybrid priors based on feature matching
+        if self.use_pretrained_priors and self.priors is not None:
+            beta_0_hybrid, Sigma_0_hybrid, tau_adjusted = self._create_hybrid_priors(
+                self.feature_names
+            )
+            self.tau_adjusted = tau_adjusted
+        else:
+            # No pre-trained priors - use weakly informative priors
+            N = len(self.feature_names)
+            beta_0_hybrid = np.zeros(N)
+            Sigma_0_hybrid = np.eye(N) * 25.0
+            tau_adjusted = 2.0
+            self.tau_adjusted = tau_adjusted
 
         # Convert to format expected by HierarchicalBayesianModel
         sme_datasets = {}
@@ -400,9 +495,9 @@ class Pipeline:
 
         # Initialize and fit
         self.hierarchical_model = HierarchicalBayesianModel(
-            beta_0=self.priors['beta_0'] if self.priors else None,
-            Sigma_0=self.priors['Sigma_0'] if self.priors else None,
-            tau=2.0,
+            beta_0=beta_0_hybrid,
+            Sigma_0=Sigma_0_hybrid,
+            tau=tau_adjusted,
             random_seed=self.random_seed
         )
 

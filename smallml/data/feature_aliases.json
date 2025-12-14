@@ -1,0 +1,140 @@
+{
+  "recency": [
+    "days_since_last_purchase",
+    "days_since_purchase",
+    "time_since_last_order",
+    "last_purchase_days",
+    "days_since_last_transaction",
+    "recency_days",
+    "time_since_purchase",
+    "last_order_days"
+  ],
+  "frequency": [
+    "purchase_count",
+    "transaction_count",
+    "order_count",
+    "number_of_orders",
+    "visit_frequency",
+    "transaction_frequency",
+    "num_purchases",
+    "total_orders"
+  ],
+  "monetary_value": [
+    "monetary",
+    "total_revenue",
+    "customer_value",
+    "lifetime_value",
+    "total_spend",
+    "average_order_value",
+    "clv",
+    "ltv",
+    "revenue",
+    "total_sales"
+  ],
+  "total_revenue": [
+    "monetary",
+    "monetary_value",
+    "customer_value",
+    "lifetime_value",
+    "total_spend",
+    "clv",
+    "ltv",
+    "revenue",
+    "total_sales"
+  ],
+  "tenure_months": [
+    "tenure",
+    "customer_tenure",
+    "months_active",
+    "account_age",
+    "time_as_customer",
+    "customer_age_months"
+  ],
+  "age": [
+    "customer_age",
+    "user_age"
+  ],
+  "creditScore": [
+    "credit_score",
+    "credit_rating",
+    "creditscore"
+  ],
+  "estimatedSalary": [
+    "estimated_salary",
+    "salary",
+    "income",
+    "annual_income",
+    "estimatedsalary"
+  ],
+  "seniorcitizen": [
+    "senior_citizen",
+    "is_senior",
+    "senior",
+    "senior_flag"
+  ],
+  "hascrcard": [
+    "has_cr_card",
+    "has_credit_card",
+    "credit_card",
+    "has_cc",
+    "credit_card_flag"
+  ],
+  "isactivemember": [
+    "is_active_member",
+    "active_member",
+    "is_active",
+    "active",
+    "active_flag"
+  ],
+  "citytier": [
+    "city_tier",
+    "tier",
+    "location_tier"
+  ],
+  "warehousetohome": [
+    "warehouse_to_home",
+    "distance_to_warehouse",
+    "warehouse_distance"
+  ],
+  "hourspendonapp": [
+    "hour_spend_on_app",
+    "hours_on_app",
+    "app_usage_hours",
+    "time_on_app"
+  ],
+  "numberofdeviceregistered": [
+    "number_of_device_registered",
+    "num_devices",
+    "device_count",
+    "registered_devices"
+  ],
+  "satisfactionscore": [
+    "satisfaction_score",
+    "satisfaction",
+    "csat",
+    "customer_satisfaction"
+  ],
+  "numberofaddress": [
+    "number_of_address",
+    "num_addresses",
+    "address_count"
+  ],
+  "complain": [
+    "complaint",
+    "has_complained",
+    "complaint_flag",
+    "complaints"
+  ],
+  "orderamounthikefromlastyear": [
+    "order_amount_hike_from_last_year",
+    "order_growth",
+    "yoy_order_growth",
+    "order_increase"
+  ],
+  "couponused": [
+    "coupon_used",
+    "coupons_used",
+    "num_coupons",
+    "coupon_count"
+  ]
+}
