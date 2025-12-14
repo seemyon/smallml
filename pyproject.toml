@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smallml"
-version = "0.1.0"
+version = "0.1.1"
 description = "Bayesian Transfer Learning for Small-Data Predictive Analytics"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -17,6 +17,14 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+dependencies = [
+    "pymc>=5.0.0",
+    "arviz>=0.22.0",
+    "numpy>=2.3.0",
+    "pandas>=2.3.0",
+    "scikit-learn>=1.7.0",
+    "scipy>=1.16.0",
 ]
 
 [project.urls]
