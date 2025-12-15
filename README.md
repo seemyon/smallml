@@ -1,5 +1,6 @@
 # SmallML: Bayesian Transfer Learning for Small Data
 
+[![PyPI version](https://badge.fury.io/py/smallml.svg)](https://badge.fury.io/py/smallml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
@@ -20,12 +21,14 @@ SmallML combines transfer learning, hierarchical Bayesian inference, and conform
 ### Installation
 
 ```bash
-pip install -e .
+pip install smallml
 ```
+### Development Version
 
-Or from GitHub (once published):
+To install the latest development version from GitHub:
+
 ```bash
-pip install git+https://github.com/seemyon/smallml
+pip install git+https://github.com/seemyon/smallml@main
 ```
 
 ### Basic Usage (5 lines of code!)
@@ -129,7 +132,7 @@ If you use SmallML in your research, please cite:
   title = {SmallML: Bayesian Transfer Learning for Small-Data Predictive Analytics},
   author = {Leontev, Semen},
   year = {2025},
-  url = {https://github.com/semleontev/smallml},
+  url = {https://github.com/seemyon/smallml},
 }
 ```
 
@@ -145,7 +148,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 
 - **GitHub**: https://github.com/seemyon/smallml
 - **Issues**: https://github.com/seemyon/smallml/issues
-- **Paper**: [Link to white paper when available]
+- **Paper**: https://arxiv.org/abs/2511.14049
 
 ---
 
