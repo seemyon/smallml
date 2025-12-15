@@ -1,6 +1,6 @@
 """SmallML version information."""
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Semen Leontev"
 __email__ = "leontyev.s@gmail.com"
 __description__ = "Bayesian Transfer Learning for Small-Data Predictive Analytics"

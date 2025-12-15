@@ -5,6 +5,16 @@ All notable changes to SmallML will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2025-12-14
+
+### Fixed
+- Relaxed dependency version constraints for better compatibility
+- numpy: Changed from >=2.3.0 to >=1.24.0,<2.2.0 (compatible with TensorFlow, Google Colab)
+- pandas: Changed from >=2.3.0 to >=2.0.0 (compatible with Google Colab)
+- scikit-learn: Changed from >=1.7.0 to >=1.3.0 (wider compatibility)
+- scipy: Changed from >=1.16.0 to >=1.10.0 (wider compatibility)
+- arviz: Changed from >=0.22.0 to >=0.18.0 (wider compatibility)
+
 ## [0.1.3] - 2025-12-14
 
 ### Changed
