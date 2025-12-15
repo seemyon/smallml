@@ -1,7 +1,8 @@
 # SmallML: Bayesian Transfer Learning for Small Data
 
 [![PyPI version](https://badge.fury.io/py/smallml.svg)](https://badge.fury.io/py/smallml)
-[![Downloads](https://static.pepy.tech/badge/smallml)](https://pepy.tech/project/smallml)
+[![Downloads_1](https://static.pepy.tech/badge/smallml)](https://pepy.tech/project/smallml)
+[![Downloads_2](https://img.shields.io/pypi/dm/smallml)](https://pypi.org/project/smallml/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
