@@ -13,6 +13,7 @@ SmallML combines transfer learning, hierarchical Bayesian inference, and conform
 ## 🎯 Key Features
 
 - **Works with tiny datasets**: 50-200 observations per entity, 3-10 entities total
+- **Single-entity mode**: Have only one store? No problem - works with just one dataset
 - **Transfer learning**: Extracts knowledge from 100K+ public observations (pre-trained priors included)
 - **Hierarchical pooling**: Shares statistical strength across multiple business entities
 - **Uncertainty guarantees**: Bayesian credible intervals + distribution-free prediction sets
@@ -62,6 +63,34 @@ print(predictions)
 
 **[See full tutorial →](examples/quickstart.py)**
 
+### Single-Entity Mode (New!)
+
+Have only one business location? SmallML now supports single-entity mode for users with just one dataset:
+
+```python
+from smallml import Pipeline
+import pandas as pd
+
+# Load your single dataset (e.g., your one coffee shop)
+my_customers = pd.read_csv('my_customers.csv')
+
+# Create pipeline with pre-trained priors (strongly recommended for single-entity)
+pipeline = Pipeline(use_pretrained_priors=True)
+
+# Pass DataFrame directly - no dict needed!
+pipeline.fit(my_customers, target_col='churned')
+
+# Predict - no sme_id needed!
+predictions = pipeline.predict(new_customers)
+```
+
+**Key differences from multi-entity mode:**
+- Pre-trained priors are strongly recommended (they provide the statistical strength that pooling would offer)
+- Accuracy may be 5-10% lower than multi-entity mode
+- As your business grows (more locations), you can switch to multi-entity mode for better accuracy
+
+**[See single-entity tutorial →](examples/single_entity_quickstart.py)**
+
 ## 📚 How It Works
 
 SmallML uses a two-layer architecture:
@@ -87,8 +116,16 @@ SmallML uses a two-layer architecture:
 ## 🧪 Requirements
 
 ### Data Requirements
+
+**Multi-Entity Mode (Recommended):**
 - **Minimum**: 3 entities, 30 observations per entity
 - **Recommended**: 5+ entities, 50+ observations per entity
+
+**Single-Entity Mode:**
+- **Minimum**: 1 entity, 50 observations
+- **Recommended**: Use pre-trained priors for best accuracy
+
+**General:**
 - **Use Case**: Binary classification (churn, conversion, etc.)
 - **Features**: Numerical + categorical (automatically handled)
 
@@ -229,5 +266,11 @@ A:
 - `{1}` = Certain prediction: WILL churn
 - `{0,1}` = Uncertain prediction: could go either way
 
+**Q: Can I use this with just one entity (one store/business)?**
+A: Yes! SmallML now supports single-entity mode. Just pass your DataFrame directly to `fit()` and use `Pipeline(use_pretrained_priors=True)` for best results. See the [single-entity tutorial](examples/single_entity_quickstart.py).
+
+**Q: What's the difference between single-entity and multi-entity mode?**
+A: Multi-entity mode pools statistical strength across your stores/branches, improving accuracy. Single-entity mode relies on pre-trained priors instead. Expect ~5-10% lower accuracy with single-entity, but it's still useful for small businesses with one location.
+
 **Q: Can I use this with just 2 entities?**
-A: The package will warn but still work. However, hierarchical pooling works best with 3+ entities (5+ recommended).
+A: The package will warn but still work. Consider either: (a) adding more entities for better pooling, or (b) using single-entity mode with pre-trained priors if pooling benefit is minimal.
