@@ -3,7 +3,7 @@
 import pickle
 import warnings
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 import pandas as pd
 import numpy as np
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
@@ -34,34 +34,43 @@ class Pipeline:
     random_seed : int, default=42
         Random seed for reproducibility.
 
+    allow_single_entity : bool, default=True
+        If True, allows fitting with a single entity (e.g., one store).
+        Single-entity mode relies heavily on pre-trained priors since there's
+        no cross-entity pooling. Accuracy may be slightly lower than multi-entity.
+
     Examples
     --------
     >>> from smallml import Pipeline
     >>>
-    >>> # Prepare multi-entity data
+    >>> # Multi-entity mode (recommended)
     >>> sme_data = {
     ...     'store_1': df1,  # 80 customers with features + 'churned' column
     ...     'store_2': df2,  # 120 customers
     ...     'store_3': df3,  # 95 customers
     ... }
-    >>>
-    >>> # Fit pipeline (automatic convergence validation)
     >>> pipeline = Pipeline()
     >>> pipeline.fit(sme_data, target_col='churned')
     >>>
+    >>> # Single-entity mode (for users with only one dataset)
+    >>> pipeline = Pipeline(use_pretrained_priors=True)  # Priors strongly recommended
+    >>> pipeline.fit(my_single_dataset, target_col='churned')  # Pass DataFrame directly
+    >>>
     >>> # Make predictions with uncertainty
-    >>> predictions = pipeline.predict(new_customers, sme_id='store_1')
+    >>> predictions = pipeline.predict(new_customers)
     """
 
     def __init__(
         self,
         use_pretrained_priors: bool = False,
         quick_mode: bool = False,
-        random_seed: int = 42
+        random_seed: int = 42,
+        allow_single_entity: bool = True
     ):
         self.use_pretrained_priors = use_pretrained_priors
         self.quick_mode = quick_mode
         self.random_seed = random_seed
+        self.allow_single_entity = allow_single_entity
 
         # Load pre-trained priors if requested
         if use_pretrained_priors:
@@ -78,6 +87,7 @@ class Pipeline:
         self.feature_matcher = None
         self.feature_matches = None
         self.tau_adjusted = None
+        self.single_entity_mode = False  # Set during fit()
 
     def _load_pretrained_priors(self) -> Dict:
         """Load pre-trained priors from package data."""
@@ -100,20 +110,22 @@ class Pipeline:
 
     def fit(
         self,
-        sme_data: Dict[str, pd.DataFrame],
+        sme_data: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
         target_col: str = 'churned',
         calibration_fraction: float = 0.25,
         validate_convergence: bool = True
     ) -> 'Pipeline':
         """
-        Fit the SmallML pipeline on multi-entity data.
+        Fit the SmallML pipeline on entity data.
 
         Parameters
         ----------
-        sme_data : dict of {str: pd.DataFrame}
-            Dictionary mapping entity names to dataframes.
+        sme_data : pd.DataFrame or dict of {str: pd.DataFrame}
+            Either:
+            - Single DataFrame: For single-entity mode (one store/business)
+            - Dictionary mapping entity names to dataframes: For multi-entity mode
             Each DF must have same features + binary target column.
-            Minimum 3 entities, 50+ observations per entity recommended.
+            Multi-entity mode (3+ entities) is recommended for best accuracy.
 
         target_col : str, default='churned'
             Name of binary target column (0/1).
@@ -128,7 +140,31 @@ class Pipeline:
         -------
         self : Pipeline
             Fitted pipeline.
+
+        Notes
+        -----
+        Single-entity mode: When passing a single DataFrame, the pipeline relies
+        heavily on pre-trained priors (use_pretrained_priors=True recommended).
+        Accuracy may be 5-10% lower than multi-entity mode due to lack of pooling.
         """
+        # Handle single DataFrame input (single-entity mode)
+        if isinstance(sme_data, pd.DataFrame):
+            if not self.allow_single_entity:
+                raise ValueError(
+                    "Single DataFrame provided but allow_single_entity=False. "
+                    "Either pass a dict of DataFrames or set allow_single_entity=True."
+                )
+            self.single_entity_mode = True
+            sme_data = {'entity_1': sme_data}
+
+            if not self.use_pretrained_priors:
+                warnings.warn(
+                    "Single-entity mode without pre-trained priors may have reduced accuracy. "
+                    "Consider using Pipeline(use_pretrained_priors=True) for better results."
+                )
+        else:
+            self.single_entity_mode = (len(sme_data) == 1)
+
         # Validate inputs
         self._validate_sme_data(sme_data, target_col)
         self.target_col = target_col
@@ -139,7 +175,11 @@ class Pipeline:
         self.feature_names = [c for c in first_df.columns if c != target_col]
 
         print(f"\n{'='*70}")
-        print(f"SmallML Pipeline: Fitting on {len(sme_data)} entities")
+        if self.single_entity_mode:
+            print(f"SmallML Pipeline: Single-Entity Mode")
+            print(f"  Using pre-trained priors: {self.use_pretrained_priors}")
+        else:
+            print(f"SmallML Pipeline: Fitting on {len(sme_data)} entities")
         print(f"{'='*70}\n")
 
         # Split data into training and calibration
@@ -206,7 +246,9 @@ class Pipeline:
         # Get entity ID
         if sme_id is None:
             sme_id = self.sme_names[0]
-            warnings.warn(f"No sme_id specified. Using '{sme_id}'.")
+            # Only warn if multiple entities exist
+            if not self.single_entity_mode:
+                warnings.warn(f"No sme_id specified. Using '{sme_id}'.")
 
         sme_idx = self.sme_names.index(sme_id)
 
@@ -348,10 +390,25 @@ class Pipeline:
         if not isinstance(sme_data, dict):
             raise TypeError("sme_data must be dict of {entity_name: dataframe}")
 
-        if len(sme_data) < 3:
+        n_entities = len(sme_data)
+
+        if n_entities == 1:
+            if not self.allow_single_entity:
+                raise ValueError(
+                    "Only 1 entity provided but allow_single_entity=False. "
+                    "Either provide multiple entities or set allow_single_entity=True."
+                )
+            print("Note: Running in single-entity mode. Pre-trained priors provide "
+                  "the statistical strength that would otherwise come from pooling.")
+        elif n_entities == 2:
             warnings.warn(
-                f"Only {len(sme_data)} entities provided. "
-                "Recommend at least 3 for stable pooling, 5+ ideal."
+                "Only 2 entities provided. Consider adding more entities for "
+                "better pooling, or use single-entity mode with pre-trained priors."
+            )
+        elif n_entities < 5:
+            warnings.warn(
+                f"Only {n_entities} entities provided. "
+                "Recommend at least 5 for stable pooling."
             )
 
         # Check all dataframes
@@ -361,7 +418,12 @@ class Pipeline:
                     f"Entity '{sme_name}' missing target column '{target_col}'"
                 )
 
-            if len(df) < 30:
+            if n_entities == 1 and len(df) < 50:
+                warnings.warn(
+                    f"Entity '{sme_name}' has only {len(df)} observations. "
+                    "For single-entity mode, recommend 50+ observations for reliable inference."
+                )
+            elif len(df) < 30:
                 warnings.warn(
                     f"Entity '{sme_name}' has only {len(df)} observations. "
                     "Minimum 30, recommend 50+ for reliable inference."
