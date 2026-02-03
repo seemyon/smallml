@@ -149,18 +149,38 @@ sme_data = {
 
 ## 📖 Documentation
 
-- **Installation Guide**: See above for basic installation
-- **Quickstart Tutorial**: `examples/quickstart.py`
-- **API Reference**: Check docstrings in `smallml.pipeline.Pipeline`
-- **Research Paper**: See `docs/` for technical details
+### For Business Users
+Just want to predict churn with your customer data? Start here:
+- **[Business Quickstart](docs/business-quickstart.md)**: Step-by-step guide (no ML expertise needed)
+- **[Example: Multi-store](examples/quickstart.py)**: Complete working example
+- **[Example: Single-store](examples/single_entity_quickstart.py)**: For businesses with one location
+
+### For Researchers & ML Engineers
+Want to apply SmallML to new domains or understand the methodology?
+- **[Research Guide](docs/research-guide.md)**: Full API, custom priors, mathematical details
+- **[Paper](https://arxiv.org/abs/2511.14049)**: Academic methodology and evaluation
+
+### Low-Level API (Researchers)
+```python
+# Access individual components for custom pipelines
+from smallml import HierarchicalBayesianModel  # Layer 2: MCMC inference
+from smallml import ConformalPredictor          # Layer 3: Uncertainty quantification
+from smallml import FeatureMatcher              # Feature name alignment
+from smallml import load_pretrained_priors      # Load bundled priors
+```
 
 ## 🔬 Research & Reproducibility
 
-This package is the production-ready version of the SmallML research framework. For research code, paper reproduction, and detailed technical documentation, see:
+SmallML provides both a **production-ready package** and **research-grade components**:
+
+| Audience | Entry Point | Documentation |
+|----------|-------------|---------------|
+| Business users | `from smallml import Pipeline` | [Business Quickstart](docs/business-quickstart.md) |
+| Researchers | `from smallml import HierarchicalBayesianModel` | [Research Guide](docs/research-guide.md) |
+
+For paper reproduction and detailed technical documentation:
 - **Research Code**: `src/` directory
 - **Reproduction Scripts**: `scripts/` directory
-- **Technical Docs**: `docs/` directory
-- **Original README**: See existing README.md for research details
 
 ## 🎓 Citation
 
