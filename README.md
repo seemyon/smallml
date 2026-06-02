@@ -6,128 +6,149 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-Build production-grade machine learning models with just **50-200 observations per business entity**.
+Reliable predictions with just **50–500 observations per entity** — for *any*
+domain.
 
-SmallML combines transfer learning, hierarchical Bayesian inference, and conformal prediction to enable SMEs to achieve reliable predictive analytics despite limited data.
+SmallML is a **domain-agnostic** Bayesian transfer-learning framework. Like
+scikit-learn, it doesn't care whether you're predicting match outcomes, species
+detection, or customer behavior — it provides the algorithmic infrastructure for
+the small-data Bayesian regime. The domain is determined entirely by *your* data,
+not by the framework.
+
+It combines three layers:
+
+1. **Layer 1 — Transfer Learning.** Trains a gradient-boosting model (LightGBM)
+   on *your* large reference dataset and converts SHAP attributions into Bayesian
+   priors (β₀, Σ₀).
+2. **Layer 2 — Hierarchical Bayesian.** Pools information across entities via
+   PyMC/NUTS partial pooling, so data-poor entities borrow strength.
+3. **Layer 3 — Conformal Prediction.** Wraps outputs in distribution-free,
+   finite-sample uncertainty guarantees.
 
 ## 🎯 Key Features
 
-- **Works with tiny datasets**: 50-200 observations per entity, 3-10 entities total
-- **Transfer learning**: Extracts knowledge from 100K+ public observations (pre-trained priors included)
-- **Hierarchical pooling**: Shares statistical strength across multiple business entities
-- **Uncertainty guarantees**: Bayesian credible intervals + distribution-free prediction sets
-- **Production-ready**: <30 minutes training, <100ms inference, automatic convergence validation
+- **Domain-agnostic**: bring any tabular schema; no built-in domain data.
+- **Three tasks**: binary classification, regression, and count (Poisson).
+- **Transfer learning from your own reference data** — no assumptions baked in.
+- **Hierarchical pooling** across user-defined entities.
+- **Uncertainty guarantees**: Bayesian credible intervals + conformal regions.
+- **One output contract** — the same five fields for every task and domain.
 
 ## 🚀 Quick Start
-
-### Installation
 
 ```bash
 pip install smallml
 ```
-### Development Version
-
-To install the latest development version from GitHub:
-
-```bash
-pip install git+https://github.com/seemyon/smallml@main
-```
-
-### Basic Usage (5 lines of code!)
 
 ```python
 from smallml import Pipeline
-import pandas as pd
 
-# Your data: dict of {entity_name: dataframe}
-sme_data = {
-    'store_1': pd.read_csv('store_1.csv'),  # 80 customers
-    'store_2': pd.read_csv('store_2.csv'),  # 120 customers
-    'store_3': pd.read_csv('store_3.csv'),  # 95 customers
-    # ... 3-10 stores total
-}
+# 1) A large reference dataset (yours) and 2) a small target dataset with an
+#    entity column. Both share feature columns + the target column.
+pipe = Pipeline(task="binary")                 # or "regression" / "count"
+pipe.fit(
+    target_df,
+    target_col="outcome",
+    entity_col="group",
+    reference_data=reference_df,
+)
 
-# Create and fit pipeline (automatically validates convergence)
-pipeline = Pipeline()
-pipeline.fit(sme_data, target_col='churned')
-
-# Make predictions with uncertainty
-predictions = pipeline.predict(new_customers, sme_id='store_1')
-print(predictions)
-#    prediction  bayesian_std  bayesian_lower_90  bayesian_upper_90  conformal_set  conformal_set_size
-# 0       0.23          0.12                0.04               0.42            {0}                   1
-# 1       0.78          0.15                0.51               0.95            {1}                   1
-# 2       0.51          0.21                0.18               0.84          {0,1}                   2  # Uncertain!
+preds = pipe.predict(new_rows, entity_id="group_A")
+print(preds[["point_prediction", "conformal_set", "confidence_flag"]])
 ```
 
-**[See full tutorial →](examples/quickstart.py)**
+**Tutorials:** [`examples/quickstart.py`](examples/quickstart.py) (binary),
+[`examples/regression_quickstart.py`](examples/regression_quickstart.py),
+[`examples/count_quickstart.py`](examples/count_quickstart.py).
 
-## 📚 How It Works
+## 📦 The Standard Output Contract
 
-SmallML uses a two-layer architecture:
+Every `predict()` call returns the **same five fields**, regardless of task or
+domain:
 
-1. **Layer 2 (Hierarchical Bayesian)**: Pools information across J entities using PyMC NUTS sampler
-   - Uses pre-trained priors from 100K+ public observations
-   - Returns full posterior distributions, not just point estimates
-   - Automatic convergence validation (R̂ < 1.01, ESS > 400)
+| Field | Description |
+|---|---|
+| `point_prediction` | Most likely outcome (probability / value / expected count) |
+| `posterior_distribution` | Per-row array of posterior samples (compute any statistic) |
+| `credible_lower` / `credible_upper` | Bayesian credible interval at `confidence_level` |
+| `conformal_set` | Set `{0}/{1}/{0,1}` (binary) or interval `[lo, hi]` (regression/count) |
+| `confidence_flag` | `"HIGH"` (definitive) or `"UNCERTAIN"` (ambiguous) |
 
-2. **Layer 3 (Conformal Prediction)**: Provides distribution-free uncertainty
-   - Split-conformal calibration for coverage guarantees
-   - Returns prediction sets: {0} (certain), {1} (certain), or {0,1} (uncertain)
-   - Empirical coverage typically 87-93% for 90% target
+## 🧪 Tasks
 
-## 📊 Performance Expectations
+| `task` | Likelihood | Point output | Conformal region |
+|---|---|---|---|
+| `binary` | Bernoulli (logit) | probability in [0,1] | set from {0, 1} |
+| `regression` | Gaussian | value on the real line | interval `[lo, hi]` |
+| `count` | Poisson | expected count ≥ 0 | integer interval |
 
-- **Prediction Accuracy**: 75-85% AUC on churn with 100 customers per entity
-- **Conformal Coverage**: 87-93% empirical for 90% target intervals
-- **Training Time**: 15-30 minutes for J=5 entities with 100 customers each
-- **Inference**: <100ms per prediction
-- **Convergence**: R̂ < 1.01, ESS > 400 (automatically validated)
+For **regression/count**, conformal intervals are **locally adaptive** via
+Conformalized Quantile Regression (CQR) — interval width varies per observation
+with the difficulty of the input. When training data is too small to fit the
+quantile regressors reliably, the pipeline automatically falls back to
+locally-adaptive normalized split conformal (`Pipeline(cqr_min_train=...)`).
 
-## 🧪 Requirements
+## 📊 Data Requirements
 
-### Data Requirements
-- **Minimum**: 3 entities, 30 observations per entity
-- **Recommended**: 5+ entities, 50+ observations per entity
-- **Use Case**: Binary classification (churn, conversion, etc.)
-- **Features**: Numerical + categorical (automatically handled)
+SmallML enforces minimums for reliable transfer + hierarchical inference:
 
-### Input Format
+- **Reference dataset** ≥ **5×** the combined target size (when provided).
+- **Entities** `J` ≥ **5** (a warning is issued below 10). Use
+  `Pipeline(allow_single_entity=True)` to override for single-/few-entity use.
+- **Observations per entity** `n_j` ≥ **20**.
+
+If the reference and target feature columns differ, SmallML proceeds on their
+**intersection** and warns about dropped columns.
+
+## ⚙️ Advanced Usage
+
 ```python
-sme_data = {
-    'entity_1': pd.DataFrame({
-        'feature_1': [...],      # Numerical or categorical
-        'feature_2': [...],
-        'feature_3': [...],
-        'churned': [0, 1, 0, ...]  # Binary target (0/1)
-    }),
-    'entity_2': pd.DataFrame({...}),
-    # ... 3-10 entities
-}
+# Task-appropriate evaluation metrics
+metrics = pipe.evaluate(X_test, y_test, entity_id="group_A")
+
+# MCMC convergence diagnostics (R̂ < 1.01, ESS > 400)
+diagnostics = pipe.get_convergence_diagnostics()
+
+# Faster MCMC for prototyping
+pipe = Pipeline(task="binary", quick_mode=True)
+
+# Extract priors yourself (Layer 1 standalone)
+from smallml import PriorExtractor
+priors = PriorExtractor(task="binary").fit(reference_df, "outcome").get_priors()
+
+# Save / load
+pipe.save("models/my_pipeline.pkl")
+pipe = Pipeline.load("models/my_pipeline.pkl")
 ```
 
-### Python Requirements
-- **Python**: 3.9 or higher
-- **Dependencies**: PyMC ≥5.0, ArviZ ≥0.22.0, pandas ≥2.3, numpy ≥2.3, scikit-learn ≥1.7, scipy ≥1.16
+## 🧰 Requirements
 
-## 📖 Documentation
+- **Python**: 3.9+
+- **Dependencies**: PyMC ≥5.0, ArviZ ≥0.18, pandas ≥2.0, numpy, scikit-learn
+  ≥1.3, scipy ≥1.10, LightGBM ≥4.0, SHAP ≥0.44
 
-- **Installation Guide**: See above for basic installation
-- **Quickstart Tutorial**: `examples/quickstart.py`
-- **API Reference**: Check docstrings in `smallml.pipeline.Pipeline`
-- **Research Paper**: See `docs/` for technical details
+## ❓ FAQ
+
+**Q: Where does the reference dataset come from?**
+A: Always from you. SmallML ships no built-in domain data. If you have no
+reference dataset, omit `reference_data` and SmallML uses weakly informative
+priors (no transfer learning).
+
+**Q: Does the output change between domains?**
+A: No. The five-field contract is identical for every task and domain.
+
+**Q: What if my reference and target columns differ?**
+A: SmallML uses their intersection and warns about dropped columns.
+
+**Q: Can I use regression or count targets?**
+A: Yes — set `task="regression"` or `task="count"`.
 
 ## 🔬 Research & Reproducibility
 
-This package is the production-ready version of the SmallML research framework. For research code, paper reproduction, and detailed technical documentation, see:
-- **Research Code**: `src/` directory
-- **Reproduction Scripts**: `scripts/` directory
-- **Technical Docs**: `docs/` directory
-- **Original README**: See existing README.md for research details
+The paper-reproduction framework lives in `src/` and `scripts/`; technical docs
+in `docs/`. Companion paper: https://arxiv.org/abs/2511.14049.
 
 ## 🎓 Citation
-
-If you use SmallML in your research, please cite:
 
 ```bibtex
 @software{smallml2025,
@@ -138,96 +159,12 @@ If you use SmallML in your research, please cite:
 }
 ```
 
-## 🤝 Contributing
-
-Contributions welcome! Please open an issue or pull request.
-
 ## 📝 License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
+MIT — see [LICENSE](LICENSE).
 
 ## 🔗 Links
 
 - **GitHub**: https://github.com/seemyon/smallml
 - **Issues**: https://github.com/seemyon/smallml/issues
 - **Paper**: https://arxiv.org/abs/2511.14049
-
----
-
-**SmallML: Empowering small businesses with reliable ML despite limited data.**
-
-## ⚙️ Advanced Usage
-
-### Evaluating Model Performance
-
-```python
-# Evaluate on test data
-X_test, y_test = load_test_data()
-metrics = pipeline.evaluate(X_test, y_test, sme_id='store_1')
-
-print(f"AUC: {metrics['auc']:.3f}")
-print(f"Accuracy: {metrics['accuracy']:.3f}")
-print(f"F1 Score: {metrics['f1_score']:.3f}")
-print(f"Conformal Coverage: {metrics['conformal_coverage']:.3f}")  # Should be ~0.90
-print(f"Mean Set Size: {metrics['mean_set_size']:.2f}")  # 1.0 = certain, 2.0 = uncertain
-```
-
-### Checking MCMC Convergence
-
-```python
-# Get convergence diagnostics
-diagnostics = pipeline.get_convergence_diagnostics()
-print(diagnostics)
-#        parameter  r_hat    ess_bulk  ess_tail
-# 0       mu[0]     1.003    1845      2103
-# 1       mu[1]     1.002    1923      2247
-# ...
-
-# All R̂ should be < 1.01, ESS should be > 400
-```
-
-### Saving and Loading Pipelines
-
-```python
-# Save fitted pipeline
-pipeline.save('models/my_pipeline.pkl')
-
-# Load later
-from smallml import Pipeline
-pipeline = Pipeline.load('models/my_pipeline.pkl')
-predictions = pipeline.predict(new_data)
-```
-
-### Quick Mode for Prototyping
-
-```python
-# Faster MCMC (fewer iterations) for testing
-pipeline = Pipeline(quick_mode=True)
-pipeline.fit(sme_data, target_col='churned')  # Takes ~5-10 min instead of 15-30
-
-# For production, use default settings:
-pipeline = Pipeline(quick_mode=False)  # More reliable convergence
-```
-
-## ❓ FAQ
-
-**Q: What if I don't have pre-trained priors?**
-A: You'll need to add your own priors to `smallml/data/priors_churn.pkl`. The package structure is ready, and you can copy your existing priors there. The file should contain `{'beta_0': np.ndarray, 'Sigma_0': np.ndarray}`.
-
-**Q: Can I use this for regression instead of classification?**
-A: Currently SmallML focuses on binary classification. Regression support is planned for future versions.
-
-**Q: What if MCMC doesn't converge?**
-A: The pipeline automatically validates convergence. If it fails, try:
-- Use `quick_mode=False` for more MCMC iterations
-- Ensure you have at least 50 observations per entity
-- Check that features are properly normalized
-
-**Q: How do I interpret conformal sets?**
-A:
-- `{0}` = Certain prediction: will NOT churn
-- `{1}` = Certain prediction: WILL churn
-- `{0,1}` = Uncertain prediction: could go either way
-
-**Q: Can I use this with just 2 entities?**
-A: The package will warn but still work. However, hierarchical pooling works best with 3+ entities (5+ recommended).

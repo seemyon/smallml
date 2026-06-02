@@ -5,6 +5,56 @@ All notable changes to SmallML will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-01
+
+Domain-agnostic refactor. SmallML is now a general-purpose Bayesian
+transfer-learning framework: the domain is determined entirely by the user's
+input data, not by internal assumptions. **This is a breaking release.**
+
+### Added
+- **Layer 1 in the package**: `PriorExtractor` (LightGBM + SHAP) extracts priors
+  (β₀, Σ₀) from a user-supplied reference dataset. New core deps: `lightgbm`,
+  `shap`.
+- **Selectable likelihood / task**: `Pipeline(task=...)` supports `"binary"`,
+  `"regression"` (Gaussian), and `"count"` (Poisson).
+- **Locally-adaptive conformal intervals** for regression/count: Conformalized
+  Quantile Regression (CQR, `smallml.layer3.cqr.ConformalQuantileRegressor`) is
+  the default; when there is too little training data to fit the quantile
+  regressors reliably (`< cqr_min_train` pooled rows), the pipeline falls back to
+  locally-adaptive **normalized split conformal** (scaled by the Bayesian
+  posterior std). Both yield per-observation interval widths, so `confidence_flag`
+  reflects genuine local uncertainty. Configurable via `Pipeline(cqr_min_train=...)`.
+- **Standard five-field output contract** for every task/domain:
+  `point_prediction`, `posterior_distribution`, `credible_lower`/`credible_upper`,
+  `conformal_set`, `confidence_flag`.
+- **`FeaturePreprocessor`** and `align_features` for arbitrary schemas (scaling,
+  categorical encoding, imputation, reference/target intersection with warnings).
+- **User-defined entities** via `entity_col` (single DataFrame) or a dict.
+- **Minimum-data enforcement**: reference ≥ 5× target, J ≥ 5 (warn < 10),
+  n_j ≥ 20.
+
+### Changed
+- Public `fit`/`predict` interface preserved, but parameters are now generic and
+  domain-neutral: `data` (was `sme_data`), required `target_col` (no `churned`
+  default), `entity_col`/`entity_id` (were `sme_id`), `reference_data`/`priors`.
+- Conformal predictor is task-aware: prediction *sets* (binary) or *intervals*
+  (regression/count).
+- All domain-specific language (`sme`, `churn`, `industry`, `customer`,
+  `business`; `mu_industry`→`mu_population`, `sigma_industry`→`sigma_population`)
+  removed from the codebase.
+
+### Removed
+- Built-in churn domain data (`priors_churn.pkl`, `feature_aliases.json`) — the
+  framework ships no domain data.
+- `use_pretrained_priors` flag (replaced by `reference_data` / `priors`).
+
+### Migration
+- Replace `Pipeline().fit(sme_data, target_col='churned')` with
+  `Pipeline(task='binary').fit(data, target_col='...', entity_col='...',
+  reference_data=...)`.
+- Read predictions from the new contract columns (e.g. `point_prediction`
+  instead of `prediction`).
+
 ## [0.1.4] - 2025-12-14
 
 ### Fixed

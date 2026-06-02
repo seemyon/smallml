@@ -1,4 +1,3 @@
 include README.md
 include LICENSE
 include CHANGELOG.md
-recursive-include smallml/data *.pkl

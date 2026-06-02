@@ -2,4 +2,4 @@
 
 from .hierarchical_model import HierarchicalBayesianModel
 
-__all__ = ['HierarchicalBayesianModel']
+__all__ = ["HierarchicalBayesianModel"]

@@ -1,186 +1,87 @@
 """
-SmallML Quickstart Example
-==========================
+SmallML Quickstart — Domain-Agnostic Binary Classification
+==========================================================
 
-This example demonstrates the complete SmallML workflow:
-1. Load multi-entity data
-2. Fit hierarchical Bayesian + conformal predictor
-3. Make predictions with uncertainty
-4. Evaluate on test data
+SmallML is a domain-agnostic Bayesian transfer-learning framework for small
+data. You bring:
 
-NOTE: This example uses synthetic data for demonstration.
-Replace with your own data in production.
+  1. a large *reference* dataset (your own — SmallML ships no domain data),
+  2. a small *target* dataset with labeled entities,
+  3. a task type ('binary', 'regression', or 'count').
+
+You always get back the same five-field output contract:
+
+    point_prediction | posterior_distribution | credible_lower/upper
+    conformal_set    | confidence_flag
+
+This example uses synthetic data; replace it with your own CSVs in production.
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-# NOTE: If priors are not yet added, you'll get a warning but the pipeline will still work
 from smallml import Pipeline
 
 
-def generate_store_data(n_customers, store_id, churn_rate=0.3):
-    """Generate synthetic customer data for one store."""
-    data = {
-        'recency': np.random.exponential(scale=30, size=n_customers),
-        'frequency': np.random.poisson(lam=5, size=n_customers),
-        'monetary': np.random.lognormal(mean=4, sigma=1, size=n_customers),
-        'tenure': np.random.uniform(1, 36, size=n_customers),
-        'age': np.random.normal(45, 15, size=n_customers),
-    }
-
-    # Generate churn labels (higher recency/lower frequency → more churn)
-    logit = (
-        -2.0
-        + 0.03 * data['recency']
-        - 0.15 * data['frequency']
-        - 0.0002 * data['monetary']
-        - 0.02 * data['tenure']
-        + np.random.normal(0, 0.5, n_customers)  # Store-specific noise
-    )
-    data['churned'] = (1 / (1 + np.exp(-logit)) > np.random.rand(n_customers)).astype(int)
-
-    return pd.DataFrame(data)
-
-
-if __name__ == '__main__':
-    # Set random seed for reproducibility
-    np.random.seed(42)
-
-    print("="*70)
-    print("SmallML Quickstart Example")
-    print("="*70)
-
-    # ===== 1. Prepare Data =====
-    print("\n[Step 1] Generating synthetic multi-entity data...")
-    print("(In production, load your own CSV files here)\n")
-
-    # Create multi-store dataset
-    sme_data = {
-        'store_1': generate_store_data(80, 1),
-        'store_2': generate_store_data(120, 2),
-        'store_3': generate_store_data(95, 3),
-        'store_4': generate_store_data(150, 4),
-        'store_5': generate_store_data(70, 5),
-    }
-
-    print(f"Generated data for {len(sme_data)} stores:")
-    for name, df in sme_data.items():
-        churn_rate = df['churned'].mean()
-        print(f"  {name}: {len(df)} customers, {churn_rate:.1%} churn rate")
-
-
-    # ===== 2. Create and Fit Pipeline =====
-    print("\n" + "="*70)
-    print("[Step 2] Fitting SmallML Pipeline")
-    print("="*70)
-    print("\nThis will take 15-30 minutes depending on your hardware.")
-    print("Progress will be shown below...\n")
-
-    pipeline = Pipeline(
-        use_pretrained_priors=False,  # Use weakly informative priors (pre-trained priors need tuning)
-        quick_mode=False,             # Use full MCMC for reliable results
-        random_seed=42
-    )
-
-    # Fit pipeline
-    pipeline.fit(
-        sme_data,
-        target_col='churned',
-        calibration_fraction=0.25,   # 25% reserved for conformal calibration
-        validate_convergence=False   # Allow completion (convergence warnings are expected with synthetic data)
+def make_frame(n, shift=0.0, seed=0):
+    """Synthetic binary data: 3 features, one binary outcome."""
+    rng = np.random.RandomState(seed)
+    a = rng.randn(n) + shift
+    b = rng.randn(n)
+    c = rng.randn(n)
+    logit = 1.4 * a - 0.7 * b + 0.3 * c - 0.2
+    outcome = (1 / (1 + np.exp(-logit)) > rng.rand(n)).astype(int)
+    return pd.DataFrame(
+        {"feature_a": a, "feature_b": b, "feature_c": c, "outcome": outcome}
     )
 
 
-    # ===== 3. Check Convergence Diagnostics =====
-    print("\n" + "="*70)
-    print("[Step 3] MCMC Convergence Diagnostics")
-    print("="*70 + "\n")
+if __name__ == "__main__":
+    # 1) Reference dataset (large) — used by Layer 1 to extract priors.
+    reference = make_frame(3000, seed=999)
 
-    diagnostics = pipeline.get_convergence_diagnostics()
-    print(diagnostics.head(10))
-    print(f"\nMax R̂: {diagnostics['r_hat'].max():.4f} (should be < 1.01)")
-    print(f"Min ESS: {diagnostics['ess_bulk'].min():.0f} (should be > 400)")
+    # 2) Target dataset (small): one row per observation, grouped by entity.
+    frames = []
+    for k in range(6):
+        df = make_frame(40, shift=0.25 * k, seed=k)
+        df["entity"] = f"group_{k}"
+        frames.append(df)
+    target = pd.concat(frames, ignore_index=True)
 
-    if diagnostics['r_hat'].max() >= 1.01:
-        print("\n⚠ Note: Convergence warnings are expected with synthetic data.")
-        print("   For production use with real data, increase draws/tune if needed.")
-
-
-    # ===== 4. Make Predictions =====
-    print("\n" + "="*70)
-    print("[Step 4] Making Predictions on New Customers")
-    print("="*70 + "\n")
-
-    # Generate new customers for store_1
-    new_customers = generate_store_data(20, 1).drop('churned', axis=1)
-
-    predictions = pipeline.predict(
-        new_customers,
-        sme_id='store_1',
-        return_uncertainty=True
+    # 3) Fit: the domain comes entirely from the data + config, not the code.
+    pipe = Pipeline(task="binary", confidence_level=0.90)
+    pipe.fit(
+        target,
+        target_col="outcome",
+        entity_col="entity",
+        reference_data=reference,
     )
 
-    print("Predictions with uncertainty:\n")
-    print(predictions.to_string(index=False))
+    # 4) Predict with the standard contract.
+    new_rows = (
+        target[target.entity == "group_0"].drop(columns=["outcome", "entity"]).head(5)
+    )
+    preds = pipe.predict(new_rows, entity_id="group_0")
+    print("\nPredictions (standard output contract):")
+    print(
+        preds[
+            [
+                "point_prediction",
+                "credible_lower",
+                "credible_upper",
+                "conformal_set",
+                "confidence_flag",
+            ]
+        ]
+        .round(3)
+        .to_string()
+    )
 
-    # Interpret results
-    print("\n" + "-"*70)
-    print("Interpretation:")
-    print("-"*70)
-    certain_no_churn = (predictions['conformal_set'] == '{0}').sum()
-    certain_churn = (predictions['conformal_set'] == '{1}').sum()
-    uncertain = (predictions['conformal_set'].str.contains('0, 1')).sum()
-
-    print(f"\n  ✓ {certain_no_churn} customers: Certain NO churn (low priority)")
-    print(f"  ⚠ {certain_churn} customers: Certain CHURN (high priority - intervene!)")
-    print(f"  ? {uncertain} customers: Uncertain (moderate priority)")
-
-
-    # ===== 5. Evaluate on Test Data =====
-    print("\n" + "="*70)
-    print("[Step 5] Evaluating on Test Data")
-    print("="*70 + "\n")
-
-    # Generate test data
-    test_data = generate_store_data(100, 1)
-    X_test = test_data.drop('churned', axis=1)
-    y_test = test_data['churned']
-
-    metrics = pipeline.evaluate(X_test, y_test, sme_id='store_1')
-
-    print("Performance Metrics:")
-    print("-"*70)
-    print(f"  AUC:                 {metrics['auc']:.3f}")
-    print(f"  Accuracy:            {metrics['accuracy']:.3f}")
-    print(f"  F1 Score:            {metrics['f1_score']:.3f}")
-    print(f"  Conformal Coverage:  {metrics['conformal_coverage']:.3f}  (target: 0.90)")
-    print(f"  Mean Set Size:       {metrics['mean_set_size']:.2f}  (1.0 = all certain)")
-
-
-    # ===== 6. Save Pipeline =====
-    print("\n" + "="*70)
-    print("[Step 6] Saving Fitted Pipeline")
-    print("="*70 + "\n")
-
-    pipeline.save('smallml_pipeline.pkl')
-    print("\n✓ Pipeline saved successfully!")
-    print("\nTo load later:")
-    print("  from smallml import Pipeline")
-    print("  pipeline = Pipeline.load('smallml_pipeline.pkl')")
-
-
-    # ===== Summary =====
-    print("\n" + "="*70)
-    print("✅ Quickstart Complete!")
-    print("="*70)
-    print("\nNext Steps:")
-    print("  1. Replace synthetic data with your own CSV files")
-    print("  2. Ensure all entities have the same feature names")
-    print("  3. Add your pre-trained priors to smallml/data/priors_churn.pkl")
-    print("  4. Run this script with your data")
-    print("  5. Deploy the saved pipeline to production")
-    print("\nFor more examples, see:")
-    print("  - examples/quickstart.ipynb (Jupyter notebook)")
-    print("  - docs/ (API documentation)")
-    print("\n" + "="*70 + "\n")
+    # 5) Evaluate.
+    sub = target[target.entity == "group_0"]
+    metrics = pipe.evaluate(
+        sub.drop(columns=["outcome", "entity"]),
+        sub["outcome"],
+        entity_id="group_0",
+    )
+    print("\nMetrics:", {k: round(v, 3) for k, v in metrics.items()})

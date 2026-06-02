@@ -35,29 +35,27 @@ class FeatureMatcher:
 
     Examples
     --------
-    >>> matcher = FeatureMatcher(pretrained_features=['recency', 'frequency', 'monetary'])
-    >>> result = matcher.match('days_since_last_purchase')
-    >>> print(result)
-    ('recency', 1.0)
+    >>> matcher = FeatureMatcher(pretrained_features=['feat_a', 'feat_b'])
+    >>> matcher.match('feat_a')
+    ('feat_a', 1.0)
 
-    >>> matches, info = matcher.match_all(['days_since_last_purchase', 'order_count', 'age'])
-    >>> print(matches)
-    {'days_since_last_purchase': 'recency', 'order_count': 'frequency', 'age': None}
+    >>> matches, info = matcher.match_all(['feat_a', 'unknown'])
+    >>> matches
+    {'feat_a': 'feat_a', 'unknown': None}
     """
 
     def __init__(
-        self,
-        pretrained_features: List[str],
-        aliases_path: Optional[Path] = None
+        self, pretrained_features: List[str], aliases_path: Optional[Path] = None
     ):
         # Normalize pre-trained features to lowercase for case-insensitive matching
         self.pretrained_features = [f.lower() for f in pretrained_features]
 
-        # Load aliases
+        # Load aliases. The framework ships no domain-specific aliases; supply a
+        # JSON file via ``aliases_path`` to enable alias-based matching.
         if aliases_path is None:
-            aliases_path = Path(__file__).parent / "data" / "feature_aliases.json"
-
-        self.aliases = self._load_aliases(aliases_path)
+            self.aliases = {}
+        else:
+            self.aliases = self._load_aliases(aliases_path)
         self.reverse_alias_map = self._build_reverse_alias_map()
 
     def _load_aliases(self, aliases_path: Path) -> Dict[str, List[str]]:
@@ -65,7 +63,7 @@ class FeatureMatcher:
         if not aliases_path.exists():
             return {}
 
-        with open(aliases_path, 'r') as f:
+        with open(aliases_path, "r") as f:
             aliases = json.load(f)
 
         # Normalize all keys and values to lowercase
@@ -121,8 +119,7 @@ class FeatureMatcher:
         return None
 
     def match_all(
-        self,
-        user_features: List[str]
+        self, user_features: List[str]
     ) -> Tuple[Dict[str, Optional[str]], List[Dict]]:
         """
         Match all user features to pre-trained features.
@@ -157,31 +154,32 @@ class FeatureMatcher:
 
                 # Determine match type
                 if uf.lower() == matched_feature:
-                    match_type = 'exact'
+                    match_type = "exact"
                 else:
-                    match_type = 'alias'
+                    match_type = "alias"
 
-                match_info.append({
-                    'user_feature': uf,
-                    'matched_to': matched_feature,
-                    'confidence': confidence,
-                    'match_type': match_type
-                })
+                match_info.append(
+                    {
+                        "user_feature": uf,
+                        "matched_to": matched_feature,
+                        "confidence": confidence,
+                        "match_type": match_type,
+                    }
+                )
             else:
                 matches[uf] = None
-                match_info.append({
-                    'user_feature': uf,
-                    'matched_to': None,
-                    'confidence': 0.0,
-                    'match_type': 'no_match'
-                })
+                match_info.append(
+                    {
+                        "user_feature": uf,
+                        "matched_to": None,
+                        "confidence": 0.0,
+                        "match_type": "no_match",
+                    }
+                )
 
         return matches, match_info
 
-    def get_match_statistics(
-        self,
-        user_features: List[str]
-    ) -> Dict:
+    def get_match_statistics(self, user_features: List[str]) -> Dict:
         """
         Get summary statistics about feature matching.
 
@@ -203,26 +201,24 @@ class FeatureMatcher:
         """
         _, match_info = self.match_all(user_features)
 
-        matched = [m for m in match_info if m['matched_to'] is not None]
-        exact = [m for m in match_info if m['match_type'] == 'exact']
-        alias = [m for m in match_info if m['match_type'] == 'alias']
+        matched = [m for m in match_info if m["matched_to"] is not None]
+        exact = [m for m in match_info if m["match_type"] == "exact"]
+        alias = [m for m in match_info if m["match_type"] == "alias"]
 
         total = len(user_features)
         matched_count = len(matched)
 
         return {
-            'total_features': total,
-            'matched_features': matched_count,
-            'unmatched_features': total - matched_count,
-            'match_rate': matched_count / total if total > 0 else 0.0,
-            'exact_matches': len(exact),
-            'alias_matches': len(alias)
+            "total_features": total,
+            "matched_features": matched_count,
+            "unmatched_features": total - matched_count,
+            "match_rate": matched_count / total if total > 0 else 0.0,
+            "exact_matches": len(exact),
+            "alias_matches": len(alias),
         }
 
     def print_match_report(
-        self,
-        user_features: List[str],
-        verbose: bool = True
+        self, user_features: List[str], verbose: bool = True
     ) -> None:
         """
         Print a detailed report of feature matching results.
@@ -240,25 +236,31 @@ class FeatureMatcher:
         print("\n" + "=" * 70)
         print("Feature Matching Results")
         print("=" * 70)
-        print(f"\nAnalyzing {stats['total_features']} user features "
-              f"against {len(self.pretrained_features)} pre-trained features...\n")
+        print(
+            f"\nAnalyzing {stats['total_features']} user features "
+            f"against {len(self.pretrained_features)} pre-trained features...\n"
+        )
 
         # Matched features
-        matched_info = [m for m in match_info if m['matched_to'] is not None]
+        matched_info = [m for m in match_info if m["matched_to"] is not None]
         if matched_info:
             print(f"✓ Matched features ({len(matched_info)}):")
             if verbose:
                 for m in matched_info:
-                    if m['match_type'] == 'exact':
-                        print(f"  • '{m['user_feature']}' → '{m['matched_to']}' "
-                              f"(exact match, confidence: {m['confidence']:.2f})")
+                    if m["match_type"] == "exact":
+                        print(
+                            f"  • '{m['user_feature']}' → '{m['matched_to']}' "
+                            f"(exact match, confidence: {m['confidence']:.2f})"
+                        )
                     else:
-                        print(f"  • '{m['user_feature']}' → '{m['matched_to']}' "
-                              f"(alias match, confidence: {m['confidence']:.2f})")
+                        print(
+                            f"  • '{m['user_feature']}' → '{m['matched_to']}' "
+                            f"(alias match, confidence: {m['confidence']:.2f})"
+                        )
             print()
 
         # Unmatched features
-        unmatched_info = [m for m in match_info if m['matched_to'] is None]
+        unmatched_info = [m for m in match_info if m["matched_to"] is None]
         if unmatched_info:
             print(f"⚠ Unmatched features ({len(unmatched_info)}):")
             if verbose:
@@ -267,12 +269,14 @@ class FeatureMatcher:
             print()
 
         # Summary
-        match_rate = stats['match_rate']
-        print(f"Transfer Learning Coverage: {match_rate:.1%} "
-              f"({stats['matched_features']}/{stats['total_features']} features)")
+        match_rate = stats["match_rate"]
+        print(
+            f"Transfer Learning Coverage: {match_rate:.1%} "
+            f"({stats['matched_features']}/{stats['total_features']} features)"
+        )
         print("→ Using pre-trained priors for matched features")
         print("→ Using weakly informative priors for unmatched features")
 
         # Fixed tau (no longer adaptive to avoid convergence issues)
-        print(f"\nBetween-SME variance (tau): 2.0 (standard)")
+        print("\nBetween-entity variance (tau): 2.0 (standard)")
         print("=" * 70 + "\n")
